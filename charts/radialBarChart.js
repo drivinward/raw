@@ -1,4 +1,4 @@
-(function() {
+(function () {
   // A multiple bar chart
 
   // The Model
@@ -37,22 +37,22 @@
   // Mapping function
   // For each record in the data returns the values
   // for the X and Y dimensions and casts them as numbers
-  model.map(function(data) {
+  model.map(function (data) {
     var results = d3
       .nest()
-      .key(function(d) {
+      .key(function (d) {
         return d[groups()];
       })
-      .key(function(d) {
+      .key(function (d) {
         return d[categories()];
       })
-      .rollup(function(v) {
+      .rollup(function (v) {
         return {
           size: !sizes()
             ? v.length
-            : d3.sum(v, function(e) {
-                return e[sizes()];
-              }),
+            : d3.sum(v, function (e) {
+              return e[sizes()];
+            }),
           category: categories(v[0]),
           group: groups(v[0]),
           color: colorsDimesion(v[0])
@@ -61,8 +61,8 @@
       .entries(data);
 
     // remap the array
-    results.forEach(function(d) {
-      d.values = d.values.map(function(item) {
+    results.forEach(function (d) {
+      d.values = d.values.map(function (item) {
         return item.value;
       });
     });
@@ -83,6 +83,10 @@
     .model(model);
 
   // visualiziation options
+  var debug = chart
+    .checkbox()
+    .title("Debug mode")
+    .defaultValue(false);
   // Width
   var width = chart
     .number()
@@ -96,32 +100,26 @@
     .defaultValue(600);
 
   //left margin
-  var marginLeft = chart
+  var globalMargin = chart
     .number()
-    .title("Left Margin")
-    .defaultValue(0);
-
-  // Space between barcharts
-  var padding = chart
-    .number()
-    .title("Vertical padding")
-    .defaultValue(0);
+    .title("Global Margin")
+    .defaultValue(120);
 
   // Padding between bars
   var xPadding = chart
     .number()
     .title("Horizontal padding")
-    .defaultValue(0.1);
+    .defaultValue(2);
 
   var barWidth = chart
     .number()
     .title("Bar width")
-    .defaultValue(16);
+    .defaultValue(8);
 
   var innerCircle = chart
     .number()
     .title("Inner circle dimension")
-    .defaultValue(12);
+    .defaultValue(36);
 
   // Use or not the same scale across all the bar charts
   var sameScale = chart
@@ -141,13 +139,13 @@
   // selection represents the d3 selection (svg)
   // data is not the original set of records
   // but the result of the model map function
-  chart.draw(function(selection, data) {
+  chart.draw(function (selection, data) {
     // Define margins
     var margin = {
-      top: 40,
-      right: 0,
-      bottom: 40,
-      left: marginLeft()
+      top: globalMargin(),
+      right: globalMargin(),
+      bottom: globalMargin(),
+      left: globalMargin()
     };
     //define title space
     var titleSpace = groups() == null ? 0 : 30;
@@ -157,8 +155,8 @@
     var maxValue;
 
     if (sameScale()) {
-      maxValue = d3.max(data, function(item) {
-        return d3.max(item.values, function(d) {
+      maxValue = d3.max(data, function (item) {
+        return d3.max(item.values, function (d) {
           return d.size;
         });
       });
@@ -167,14 +165,14 @@
     // Check consistency among categories and colors, save them all
     var allCategories = [];
     var allColors = [];
-    data.forEach(function(item) {
-      var temp_categories = item.values.map(function(val) {
+    data.forEach(function (item) {
+      var temp_categories = item.values.map(function (val) {
         return val.category;
       });
       allCategories = allCategories.concat(temp_categories);
 
       // Same for color
-      var temp_colors = item.values.map(function(val) {
+      var temp_colors = item.values.map(function (val) {
         return val.color;
       });
       allColors = allColors.concat(temp_colors);
@@ -188,31 +186,24 @@
 
     // define single barchart height,
     // depending on the number of bar charts
-    var w = +width() - margin.left,
-      h = (+height() - margin.bottom - margin.top - (titleSpace + padding()) * (data.length - 1)) / data.length;
+    var w = +width() - (globalMargin() * 2),
+      h = (+height() - (globalMargin() * 2) - (titleSpace) * (data.length - 1)) / data.length;
 
     // Define scales
-    var xScale = d3
-      .scaleBand()
-      .rangeRound([0, w])
-      .padding(+xPadding());
-
     var yScale = d3.scaleLinear().range([0, h / 2]);
 
     // Define color scale domain
     colors.domain(allColors);
 
     // Draw each bar chart
-    data.forEach(function(item, index) {
-      // Define x domain
-      xScale.domain(allCategories);
+    data.forEach(function (item, index) {
       // Define y domain
       if (sameScale()) {
         yScale.domain([0, maxValue]);
       } else {
         yScale.domain([
           0,
-          d3.max(item.values, function(d) {
+          d3.max(item.values, function (d) {
             return d.size;
           })
         ]);
@@ -222,7 +213,7 @@
       // move it according the index
       barchart = selection
         .append("g")
-        .attr("transform", "translate(" + margin.left + "," + index * (h + padding() + titleSpace) + ")");
+        .attr("transform", "translate(" + margin.left + "," + index * (h + titleSpace) + ")");
 
       // Draw title
       barchart
@@ -246,61 +237,66 @@
         .attr("transform", `translate(${w / 2}, ${height() / 2 + titleSpace})`);
 
       const rotatedBar = translationGroup
-        .selectAll("g")
+        .selectAll("g.bar")
         .data(item.values)
         .enter()
         .append("g")
         .attr("transform", (d, i, a) => `rotate(${(360 / a.length) * i}) translate(${-barWidth()}, 0)`);
-
+        
       // Draw the bars
       rotatedBar
         .append("rect")
         .attr("class", "bar")
         .attr("width", barWidth())
+        .attr("height", d => yScale(d.size) - innerCircle())
         .attr("x", barWidth() / 2)
         .attr("y", innerCircle())
-        .attr("height", d => yScale(d.size))
         .style("stroke", d => colors()(d.color))
         .style("fill", d => colors()(d.color));
 
-      // // debug sh*t
-      // rotatedBar
-      //   .append("line")
-      //   .attr("class", "line")
-      //   .attr("x1", barWidth())
-      //   .attr("y1", xScale.bandwidth())
-      //   .attr("x2", barWidth())
-      //   // .attr("x", - xScale.bandwidth() / 2)
-      //   .attr("y2", function(d) {
-      //     return yScale(d.size);
-      //   })
-      //   .style("stroke", function(d) {
-      //     return colors()(d.color);
-      //   })
-      //   .style("stroke-width", 1);
-    });
+      // debug sh*t
+      if (debug() === true) {
+        rotatedBar
+          .append("line")
+          .attr("class", "line")
+          .attr("x1", barWidth())
+          .attr("y1", innerCircle())
+          .attr("x2", barWidth())
+          .attr("y2", d => yScale(d.size) - innerCircle())
+          .style("stroke", "red")
+          .style("stroke-width", 2);
+      }
 
-    // // After all the charts, draw x axis
-    // selection
-    //   .append("g")
-    //   .attr("class", "x axis")
-    //   .style("font-size", "10px")
-    //   .style("font-family", "Arial, Helvetica")
-    //   .attr(
-    //     "transform",
-    //     "translate(" +
-    //       margin.left +
-    //       "," +
-    //       ((h + padding() + titleSpace) * data.length - padding()) +
-    //       ")"
-    //   )
-    //   .call(d3.axisBottom(xScale));
+      const maxYValue = yScale(d3.max(item.values).size)
+
+      const rotatedLabel = translationGroup
+        .selectAll("g.label")
+        .data(item.values)
+        .enter()
+        .append("g")
+        .attr("transform", (d, i, a) => `rotate(${(360 / a.length) * i}) translate(0, ${h / 2 + 12})`)
+        
+      rotatedLabel
+        .append("text")
+        .attr("x", barWidth() / 2)
+        .attr("y", 0)
+        .attr("transform", "rotate(90)")
+        .text(d => d.category.slice(0, 20))
+        
+        rotatedLabel
+        .append("text")
+        .attr("x", barWidth() / 2)
+        .attr("y", 16)
+        .attr("transform", "rotate(90)")
+        .text(d => Math.round(d.size * 100) / 100)
+
+    });
 
     // Set styles
 
-    d3.selectAll(".axis line, .axis path")
-      .style("shape-rendering", "crispEdges")
-      .style("fill", "none")
-      .style("stroke", "#ccc");
+    // d3.selectAll(".axis line, .axis path")
+    //   .style("shape-rendering", "crispEdges")
+    //   .style("fill", "none")
+    //   .style("stroke", "#ccc");
   });
 })();
