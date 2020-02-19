@@ -1,8 +1,8 @@
-(function () {
+(function() {
   // A multiple bar chart
 
   // The Model
-  // The model abstraction is a matrix of categories: the main dimansion will define the groups,
+  // The model abstraction is a matrix of categories: the main dimension will define the groups,
   // and the secondary will define the single bars.
   // Optional dimension is on the bar chart color (to be defined).
 
@@ -37,22 +37,22 @@
   // Mapping function
   // For each record in the data returns the values
   // for the X and Y dimensions and casts them as numbers
-  model.map(function (data) {
+  model.map(function(data) {
     var results = d3
       .nest()
-      .key(function (d) {
+      .key(function(d) {
         return d[groups()];
       })
-      .key(function (d) {
+      .key(function(d) {
         return d[categories()];
       })
-      .rollup(function (v) {
+      .rollup(function(v) {
         return {
           size: !sizes()
             ? v.length
-            : d3.sum(v, function (e) {
-              return e[sizes()];
-            }),
+            : d3.sum(v, function(e) {
+                return e[sizes()];
+              }),
           category: categories(v[0]),
           group: groups(v[0]),
           color: colorsDimesion(v[0])
@@ -61,8 +61,8 @@
       .entries(data);
 
     // remap the array
-    results.forEach(function (d) {
-      d.values = d.values.map(function (item) {
+    results.forEach(function(d) {
+      d.values = d.values.map(function(item) {
         return item.value;
       });
     });
@@ -139,7 +139,7 @@
   // selection represents the d3 selection (svg)
   // data is not the original set of records
   // but the result of the model map function
-  chart.draw(function (selection, data) {
+  chart.draw(function(selection, data) {
     // Define margins
     var margin = {
       top: globalMargin(),
@@ -155,8 +155,8 @@
     var maxValue;
 
     if (sameScale()) {
-      maxValue = d3.max(data, function (item) {
-        return d3.max(item.values, function (d) {
+      maxValue = d3.max(data, function(item) {
+        return d3.max(item.values, function(d) {
           return d.size;
         });
       });
@@ -165,14 +165,14 @@
     // Check consistency among categories and colors, save them all
     var allCategories = [];
     var allColors = [];
-    data.forEach(function (item) {
-      var temp_categories = item.values.map(function (val) {
+    data.forEach(function(item) {
+      var temp_categories = item.values.map(function(val) {
         return val.category;
       });
       allCategories = allCategories.concat(temp_categories);
 
       // Same for color
-      var temp_colors = item.values.map(function (val) {
+      var temp_colors = item.values.map(function(val) {
         return val.color;
       });
       allColors = allColors.concat(temp_colors);
@@ -186,8 +186,8 @@
 
     // define single barchart height,
     // depending on the number of bar charts
-    var w = +width() - (globalMargin() * 2),
-      h = (+height() - (globalMargin() * 2) - (titleSpace) * (data.length - 1)) / data.length;
+    var w = +width() - globalMargin() * 2,
+      h = (+height() - globalMargin() * 2 - titleSpace * (data.length - 1)) / data.length;
 
     // Define scales
     var yScale = d3.scaleLinear().range([0, h / 2]);
@@ -196,14 +196,14 @@
     colors.domain(allColors);
 
     // Draw each bar chart
-    data.forEach(function (item, index) {
+    data.forEach(function(item, index) {
       // Define y domain
       if (sameScale()) {
         yScale.domain([0, maxValue]);
       } else {
         yScale.domain([
           0,
-          d3.max(item.values, function (d) {
+          d3.max(item.values, function(d) {
             return d.size;
           })
         ]);
@@ -242,7 +242,7 @@
         .enter()
         .append("g")
         .attr("transform", (d, i, a) => `rotate(${(360 / a.length) * i}) translate(${-barWidth()}, 0)`);
-        
+
       // Draw the bars
       rotatedBar
         .append("rect")
@@ -267,29 +267,28 @@
           .style("stroke-width", 2);
       }
 
-      const maxYValue = yScale(d3.max(item.values).size)
+      const maxYValue = yScale(d3.max(item.values).size);
 
       const rotatedLabel = translationGroup
         .selectAll("g.label")
         .data(item.values)
         .enter()
         .append("g")
-        .attr("transform", (d, i, a) => `rotate(${(360 / a.length) * i}) translate(0, ${h / 2 + 12})`)
-        
+        .attr("transform", (d, i, a) => `rotate(${(360 / a.length) * i}) translate(0, ${h / 2 + 12})`);
+
       rotatedLabel
         .append("text")
         .attr("x", barWidth() / 2)
         .attr("y", 0)
         .attr("transform", "rotate(90)")
-        .text(d => d.category.slice(0, 20))
-        
-        rotatedLabel
+        .text(d => d.category.slice(0, 20));
+
+      rotatedLabel
         .append("text")
         .attr("x", barWidth() / 2)
         .attr("y", 16)
         .attr("transform", "rotate(90)")
-        .text(d => Math.round(d.size * 100) / 100)
-
+        .text(d => Math.round(d.size * 100) / 100);
     });
 
     // Set styles
